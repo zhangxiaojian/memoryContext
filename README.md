@@ -13,6 +13,6 @@ Here is an example :
 Usage:
 See INSTALL first. 
 
-Then the memory context lib is in ./mctx/lib/ . To use this lib, user's program need include file mctx.hwhich is installed in ./mctx/include/
+Then the memory context lib is in ./mctx/lib/ . To use this lib, user's program need include file mctx.h which is installed in ./mctx/include/
 
 My test code is in ./mctx/src/tools/, after installation, the executable file mctx is installed in ./mctx/
