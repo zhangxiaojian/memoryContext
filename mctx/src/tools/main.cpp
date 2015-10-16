@@ -1,4 +1,4 @@
-#include <iostream>
+﻿#include <iostream>
 #include "../MemoryContextData.h"
 #include "../AllocSetContext.h"
 
@@ -39,6 +39,7 @@ int main()
 	//删除内存上下文中的内存
 	myContext->jdelete();
 	cout << "-----------------------------删除内存上下文后--------------------------------------"<< endl;
+	myContext->jstats(0);
 
 	return 0;
 }
