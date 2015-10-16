@@ -9,3 +9,7 @@ Here is an example :
         Total 1 times alloc; 0 times is chunk; 1 times is block; 0 flailed !
         Total 1 times free; 0 times is chunk; 1 times is block;
         1024 total in 1 blocks; 992 free (0 chunks); 32 used
+
+Usage:
+See INSTALL first. 
+
