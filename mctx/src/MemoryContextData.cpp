@@ -13,11 +13,11 @@
 MemoryContextData* TopMemoryContext;
 
 MemoryContextData::MemoryContextData(MemoryContextData* prt,string mName):
-name(mName),
+	isReset(true),
+	name(mName),
 	parent(prt),
 	firstchild(NULL),
-	nextchild(NULL),
-	isReset(true)
+	nextchild(NULL)
 {
 	/* Type-specific routine finishes any other essential initialization */
 	init();

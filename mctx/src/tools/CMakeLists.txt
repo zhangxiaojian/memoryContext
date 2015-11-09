@@ -2,6 +2,7 @@
 set(
 	MEMORYCONTEXT_SOURCE
 	main.cpp
+	Time.cpp
 	)
 
 add_executable(

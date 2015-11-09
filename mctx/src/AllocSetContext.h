@@ -22,6 +22,7 @@
 #include "MemoryContextTool.h"
 #include "MemoryContextData.h"
 #include "AllocSetType.h"
+#include "AllocAnaly.h"
 
 using namespace std;
 
@@ -90,14 +91,11 @@ class AllocSetContext:public MemoryContextData
 		static AllocSetContext* allocSetContextCreate(MemoryContextData* parent, string name, 
 				Size minContextSize, Size initBlockSize, Size maxBlockSize);
 
+		static int AllocSetFreeIndex(Size size);
 	private:
 		AllocSetContext(MemoryContextData* parent, string name,
 				Size minContextSize, Size initBlockSize, Size maxBlockSize);
 
-		static inline int AllocSetFreeIndex(Size size);
-#ifdef ALLOCSETCONTEXT_ANALY
-		void resetAnaly();
-#endif
 
 	private:
 		AllocBlock	blocks;		/*< 内存块链表>*/
@@ -109,12 +107,7 @@ class AllocSetContext:public MemoryContextData
 		Size		allocChunkLimit; /*< 超过这个值将会分配一个独立的块>*/
 		AllocBlock	keeper;		   /*< 重置的时候不释放该空间>*/
 #ifdef ALLOCSETCONTEXT_ANALY
-		Size		allocCount;					/*< 总共进行了多少次内存分配>*/
-		Size		allocCountFreeList;		/*< 多少次分配在FreeList中>*/
-		Size		allocCountBlock;			/*< 多少次分配是一个Block>*/
-		Size		freeCount;
-		Size		freeCountFreeList;
-		Size		freeCountBlock;
+		AllocAnaly	analy;
 #endif
 };
 #endif

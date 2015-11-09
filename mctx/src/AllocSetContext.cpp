@@ -31,6 +31,10 @@ AllocSetContext::AllocSetContext(MemoryContextData* parent, string name,
 		minContextSize(minContextSize),
 		initBlockSize(initBlockSize),
 		maxBlockSize(maxBlockSize)
+#ifdef ALLOCSETCONTEXT_ANALY
+		 ,
+		analy(1 << ALLOC_MINBITS, 0)
+#endif
 {
 	/*
 	*使参数对齐,强制使blocksize至少为1kb
@@ -51,6 +55,10 @@ AllocSetContext::AllocSetContext(MemoryContextData* parent, string name,
 	while((Size)(allocChunkLimit + ALLOC_CHUNKHDRSZ) > 
 		(Size)((maxBlockSize - ALLOC_BLOCKHDRSZ) / ALLOC_CHUNK_FRACTION))
 		allocChunkLimit >>= 1;
+
+#ifdef ALLOCSETCONTEXT_ANALY
+	analy.setAllocChunkLimit(allocChunkLimit);
+#endif
 
 	/*
 	* 内存上下文初始化的一个BLOCK，如果足够分配一个BLOCK需要的最小空间（至少需要一个Block头和一个Chunk头）
@@ -123,10 +131,7 @@ void* AllocSetContext::jalloc(Size size)
 	
 	/*** 标记上下文已进了分配 ***/
 	isReset = false;
-	/*** 统计总的分配次数 ***/
-#ifdef ALLOCSETCONTEXT_ANALY
-	allocCount++;
-#endif
+
 	/*** 如果申请的空间大小超过allocChunkLimit 那么就为这次申请分配一个独立的内存块，并把这个内存块加到内存链表的第二个位置 ***/
 	if (size > allocChunkLimit)
 	{
@@ -162,7 +167,7 @@ void* AllocSetContext::jalloc(Size size)
 		}
 		/** 统计分配一整个Block的次数 **/
 #ifdef ALLOCSETCONTEXT_ANALY
-		allocCountBlock++;
+		analy.allocRecord(size);
 #endif
 		return AllocChunkGetPointer(chunk);
 	}
@@ -180,6 +185,9 @@ void* AllocSetContext::jalloc(Size size)
 
 		freeList[fidx] = (AllocChunk) chunk->aset;
 		chunk->aset = (void *) this;
+#ifdef ALLOCSETCONTEXT_ANALY
+		analy.allocRecord(size);
+#endif
 
 		return AllocChunkGetPointer(chunk);
 	}
@@ -315,16 +323,17 @@ void* AllocSetContext::jalloc(Size size)
 	chunk->size = chunk_size;
 
 #ifdef ALLOCSETCONTEXT_ANALY
-	allocCountFreeList++;
+	analy.allocRecord(size);
 #endif
+
 
 	return AllocChunkGetPointer(chunk);
 }
 		
 void* AllocSetContext::jrealloc(void* pointer, Size size)
 {
-		AllocChunk	chunk = AllocPointerGetChunk(pointer);
-		Size		oldsize = chunk->size;
+	AllocChunk	chunk = AllocPointerGetChunk(pointer);
+	Size		oldsize = chunk->size;
 
 	/*
 	 * 如果realloc的空间反而更小，那么就不用费事，直接返回即可。
@@ -417,10 +426,6 @@ void AllocSetContext::jfree(void* pointer)
 {
 	AllocChunk	chunk = AllocPointerGetChunk(pointer);
 
-#ifdef ALLOCSETCONTEXT_ANALY
-	freeCount++;
-#endif
-
 	if (chunk->size > allocChunkLimit)
 	{
 		/*
@@ -451,9 +456,6 @@ void AllocSetContext::jfree(void* pointer)
 
 		free(block);
 
-#ifdef ALLOCSETCONTEXT_ANALY
-		freeCountBlock++;
-#endif
 	}
 	else
 	{
@@ -463,7 +465,7 @@ void AllocSetContext::jfree(void* pointer)
 		freeList[fidx] = chunk;
 
 #ifdef ALLOCSETCONTEXT_ANALY
-		freeCountFreeList++;
+		analy.freeRecord(chunk->size);
 #endif
 	}
 }
@@ -485,6 +487,9 @@ void AllocSetContext::jdelete()
 		free(block);
 		block = next;
 	}
+#ifdef ALLOCSETCONTEXT_ANALY
+	analy.reset();
+#endif
 }
 
 /**
@@ -521,7 +526,7 @@ void AllocSetContext::jreset()
 	nextBlockSize = initBlockSize;
 	/** 重置分析数据 **/
 #ifdef ALLOCSETCONTEXT_ANALY
-	resetAnaly();
+	analy.reset();
 #endif
 	/* 标记上下文已被重置*/
 	isReset = true;
@@ -562,21 +567,14 @@ void AllocSetContext::jstats(int level)
 	for (i = 0; i < level; i++)
 		pad = pad + "  ";
 
-	cerr << pad <<getName() << " : \n" ;
+	cout << pad <<getName() << " : \n" ;
 #ifdef ALLOCSETCONTEXT_ANALY
-	/* 基本参数信息 */
-	cerr	<< pad << "\tMinContextSize: " << minContextSize << "\tMaxBlockSize: " << maxBlockSize << endl
-		<< pad << "\tNextBlockSize: " << nextBlockSize << "\tFreeListSize: " << ALLOC_FREELIST_SIZE << endl
-		<<pad << "\tAllocChunkLimit: " << allocChunkLimit << "\tMinChunkSize: " << (1 << ALLOC_MINBITS) <<endl;
-	
-	/* 申请释放信息 */
-	cerr << pad <<"\tTotal " << allocCount << " times alloc; " << allocCountFreeList << " times is chunk; "
-		<< allocCountBlock << " times is block; " << allocCount - allocCountFreeList - allocCountBlock << " flailed !" << endl
-		<<pad << "\tTotal " << freeCount << " times free; " << freeCountFreeList << " times is chunk; " << freeCountBlock << " times is block; " << endl;
+	/* 3是表格在每个context输出内部的留白 */
+	analy.stat(level + 3);
 #endif
-
+	pad = pad + "       ";
 	/* 目前状态信息 */
-	cerr << pad << "\t" << totalspace << " total in " << nblocks << " blocks; " << freespace << " free (" 
+	cout << pad << totalspace << " total in " << nblocks << " blocks; " << freespace << " free (" 
 		<< nchunks << " chunks); " << totalspace - freespace << " used" << endl; 
 }
 
@@ -637,15 +635,4 @@ int AllocSetContext::AllocSetFreeIndex(Size size)
 	return idx;
 }
 
-#ifdef ALLOCSETCONTEXT_ANALY
 
-void AllocSetContext::resetAnaly()
-{
-	if(isReset == false)
-	{
-		allocCount = allocCountFreeList = allocCountBlock = 0;
-		freeCount = freeCountFreeList = freeCountBlock = 0;
-	}
-}
-
-#endif

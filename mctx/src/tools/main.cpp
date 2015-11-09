@@ -1,4 +1,6 @@
-﻿#include <iostream>
+#include <iostream>
+#include <cstdlib>
+#include "Time.h"
 #include "../MemoryContextData.h"
 #include "../AllocSetContext.h"
 
@@ -10,7 +12,7 @@ int main()
 	MemoryContextData::memoryContextInit();
 
 	MemoryContextData* myContext = 
-				AllocSetContext::allocSetContextCreate(TopMemoryContext, "myContext", 1000, 4000, 8000);
+				AllocSetContext::allocSetContextCreate(TopMemoryContext, "myContext", 1000, 4000, 32* 1024);
 
 	MemoryContextData* errorContext = 
 				AllocSetContext::allocSetContextCreate(TopMemoryContext, "errorContext", 1024, 2048, 8092);
@@ -19,6 +21,16 @@ int main()
 				AllocSetContext::allocSetContextCreate(errorContext, "normalErrorContext", 1024, 2048, 4096);
 
 	//分配空间
+	Time::start();
+
+	int times = 10000;
+	while(times--)
+	{
+		int memory_size = rand() % (8192);
+		myContext->jalloc(memory_size);
+	}
+	
+	Time::stop();
 	void* memory = myContext->jalloc(1024);
 	void* error = errorContext->jalloc(2098);
 	void* normalerror = normalErrorContext->jalloc(1025);
@@ -26,20 +38,20 @@ int main()
 	//释放errorContext空间
 	errorContext->jfree(error);
 	//输出统计信息
-	cout << "-----------------------------所有内存上下文统计信息--------------------------------"<< endl;
-	TopMemoryContext->memoryContextStats();
+	//cout << "-----------------------------所有内存上下文统计信息--------------------------------"<< endl;
+	//TopMemoryContext->memoryContextStats();
 
 
 	cout << "-----------------------------myContext 统计信息------------------------------------"<< endl;
 	myContext->jstats(0);
 	//重置内存上下文
-	myContext->jreset();
-	cout << "-----------------------------重置内存上下文后--------------------------------------"<< endl;
-	myContext->jstats(0);
+	//myContext->jreset();
+	//cout << "-----------------------------重置内存上下文后--------------------------------------"<< endl;
+	//myContext->jstats(0);
 	//删除内存上下文中的内存
-	myContext->jdelete();
-	cout << "-----------------------------删除内存上下文后--------------------------------------"<< endl;
-	myContext->jstats(0);
+	//myContext->jdelete();
+	//cout << "-----------------------------删除内存上下文后--------------------------------------"<< endl;
+	//myContext->jstats(0);
 
 	return 0;
 }
