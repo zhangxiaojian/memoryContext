@@ -3,12 +3,17 @@ more detials is in www.zhangxiaojian.name.
 
 Here is an example :
 
-        MinContextSize: 1024    MaxBlockSize: 8092
-        NextBlockSize: 2048     FreeListSize: 11
-        AllocChunkLimit: 1024   MinChunkSize: 8
-        Total 1 times alloc; 0 times is chunk; 1 times is block; 0 flailed !
-        Total 1 times free; 0 times is chunk; 1 times is block;
-        1024 total in 1 blocks; 992 free (0 chunks); 32 used
+myContext :
+       +----------------+------+------+------+------+------+-------+-------+-------+-------+
+       |   Chunk Size   |  8B  | 16B  | 32B  | 64B  | 128B | 256B  | 512B  | >512B | Total |
+       +----------------+------+------+------+------+------+-------+-------+-------+-------+
+       | Alloced Times  | 10   | 9    | 10   | 44   | 88   | 179   | 280   | 9381  | 10001 |
+       | Wasted Space   | 48   | 24   | 82   | 634  | 2717 | 11547 | 36402 | 0     | 51454 |
+       | Average Wasted | 4    | 2    | 8    | 14   | 30   | 64    | 130   | 0     | 5     |
+       | Free Times     | 0    | 0    | 0    | 0    | 0    | 0     | 0     | 0     | 0     |
+       | Hit Rate       | 0    | 0    | 0    | 0    | 0    | 0.01  | 0.02  | 0.93  | 0.06  |
+       +----------------+------+------+------+------+------+-------+-------+-------+-------+
+       41161804 total in 9657 blocks; 63016 free (514 chunks); 41098788 used
 
 Usage:
 See INSTALL first. 
